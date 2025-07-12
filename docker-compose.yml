@@ -1,0 +1,93 @@
+# docker-compose.yml (versión final con Nextcloud - CORREGIDA)
+services:
+  # ODOO (ERP System)
+  odoo:
+    image: odoo:16.0
+    container_name: odoo
+    ports:
+      - "8069:8069"
+    depends_on:
+      - odoo-db
+    # ESTA SECCIÓN FALTABA Y ES LA CORRECCIÓN
+    environment:
+      - HOST=odoo-db
+      - USER=odoo
+      - PASSWORD=odoo
+    networks:
+      - clinica-net
+
+  odoo-db:
+    image: postgres:15
+    container_name: odoo-db
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=odoo
+      - POSTGRES_USER=odoo
+    networks:
+      - clinica-net
+
+  # NEXTCLOUD (File Storage)
+  nextcloud-db:
+    image: postgres:15
+    container_name: nextcloud-db
+    volumes:
+      - nextcloud-db-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=nextcloud
+      - POSTGRES_USER=nextcloud
+      - POSTGRES_PASSWORD=nextcloud
+    networks:
+      - clinica-net
+
+  nextcloud:
+    image: nextcloud:latest
+    container_name: nextcloud
+    ports:
+      - 8084:80
+    depends_on:
+      - nextcloud-db
+    environment:
+      - POSTGRES_HOST=nextcloud-db
+      - POSTGRES_DB=nextcloud
+      - POSTGRES_USER=nextcloud
+      - POSTGRES_PASSWORD=nextcloud
+      - NEXTCLOUD_ADMIN_USER=admin
+      - NEXTCLOUD_ADMIN_PASSWORD=admin
+    volumes:
+      - nextcloud-data:/var/www/html
+    networks:
+      - clinica-net
+
+  # KEYCLOAK (SSO and Identity Management)
+  keycloak:
+    image: quay.io/keycloak/keycloak:21.1
+    container_name: keycloak
+    ports:
+      - "8888:8080"
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+    command: start-dev
+    networks:
+      - clinica-net
+
+      # RABBITMQ (Messaging System)
+# RABBITMQ (Messaging System)
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # Puerto para la comunicación de mensajería
+      - "15672:15672" # Puerto para la interfaz de administración web
+    networks:
+      - clinica-net
+
+volumes:
+  odoo-data:
+  odoo-db-data:
+  nextcloud-db-data:
+  nextcloud-data:
+
+networks:
+  clinica-net:
+    driver: bridge
